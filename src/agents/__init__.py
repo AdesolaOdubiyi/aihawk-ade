@@ -3,6 +3,8 @@ from .api_agent import APIAgent, FormDefinition as APIFormDefinition
 from .browser_agent import BrowserAgent, FormDefinition as BrowserFormDefinition
 from .greenhouse_agent import GreenhouseAgent
 from .lever_agent import LeverAgent
+from .playwright_agent import PlaywrightAgent
+from .browser_use_agent import BrowserUseAgent
 
 __all__ = [
     "Agent",
@@ -16,4 +18,6 @@ __all__ = [
     "BrowserFormDefinition",
     "GreenhouseAgent",
     "LeverAgent",
+    "PlaywrightAgent",
+    "BrowserUseAgent",
 ]
