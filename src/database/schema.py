@@ -127,12 +127,14 @@ _SCHEMA_STATEMENTS = (
         id TEXT PRIMARY KEY,
         batch_id TEXT NOT NULL REFERENCES job_batches(id),
         job_id TEXT NOT NULL REFERENCES jobs(id),
+        position INTEGER NOT NULL,
         user_approval_status TEXT DEFAULT 'pending' CHECK(user_approval_status IN ('approved', 'rejected', 'pending')),
         approved_at TIMESTAMP,
         is_duplicate_of TEXT REFERENCES jobs(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         deleted_at TIMESTAMP,
-        UNIQUE(batch_id, job_id)
+        UNIQUE(batch_id, job_id),
+        UNIQUE(batch_id, position)
     )
     """,
     """
