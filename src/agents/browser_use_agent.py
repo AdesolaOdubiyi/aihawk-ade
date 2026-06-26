@@ -63,6 +63,15 @@ class BrowserUseAgent(BrowserAgent):
         super().__init__("BrowserUseAgent")
         self.profile = profile
         self.dry_run = dry_run
+        if dry_run:
+            # Unlike PlaywrightAgent (which never calls submit in dry-run), this
+            # agent drives an autonomous LLM loop, so "do not submit" is an
+            # instruction the model is asked to honor, not a hard code guarantee.
+            logger.warning(
+                "BrowserUseAgent dry-run is advisory: the LLM is instructed not to "
+                "submit, but compliance is not code-enforced. Verify first with "
+                "PlaywrightAgent or a vendor demo before pointing this at a real posting."
+            )
         self.runner = runner if runner is not None else self._default_runner(model)
         input_price, output_price = price_for(model)
         self.cost = CostLedger(input_price=input_price, output_price=output_price)
@@ -118,8 +127,9 @@ class BrowserUseAgent(BrowserAgent):
 
     def _build_task(self, job: JobListing) -> str:
         submit_clause = (
-            "Fill every field but DO NOT click the final submit button. Stop once the "
-            "form is complete and report what you filled."
+            "CRITICAL: This is a DRY RUN. Fill every field but you MUST NOT click the "
+            "final submit/apply button under any circumstances. Stop once the form is "
+            "complete and report exactly what you filled."
             if self.dry_run
             else "Fill every field and submit the application."
         )

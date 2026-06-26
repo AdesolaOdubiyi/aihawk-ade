@@ -37,6 +37,17 @@ ollama serve            # serves http://localhost:11434
 3. `dry_run=True` (the default) -> fills everything, screenshots, **never submits**.
 4. Any unexpected error (DOM/driver/agent) -> `MANUAL_REVIEW` with detail — never silent.
 
+> ⚠️ **Dry-run strength differs by agent.** `PlaywrightAgent` enforces dry-run in
+> code (it never calls submit). `BrowserUseAgent` drives an autonomous LLM loop,
+> so its dry-run is an *instruction* the model is asked to honor, not a hard
+> guarantee. **Do your first verification with `PlaywrightAgent` or a vendor demo**;
+> only point `BrowserUseAgent` at a real posting once you trust the setup.
+
+> **Answer cache is keyed by question text only, not by employer.** A
+> company-specific free-form answer can be reused across postings. Review cached
+> entries in `data_folder/answers_cache.json` periodically; delete any that
+> shouldn't generalize.
+
 The orchestrator already queues `MANUAL_REVIEW` outcomes with full traceability.
 
 ## Wiring into the orchestrator

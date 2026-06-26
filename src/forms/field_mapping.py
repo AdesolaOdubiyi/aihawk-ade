@@ -1,3 +1,4 @@
+import re
 import yaml
 from pathlib import Path
 from loguru import logger
@@ -58,12 +59,31 @@ def _default_field_mapping() -> Dict[str, List[str]]:
 
 
 def find_field_variant(field_label: str, field_mapping: Dict) -> Optional[str]:
-    """Find canonical field name for a label using the mapping."""
-    field_label_lower = field_label.lower().strip()
+    """Find the canonical field name for a label using the mapping.
 
-    for canonical_name, variants in field_mapping.items():
-        for variant in variants:
-            if variant.lower() == field_label_lower:
+    Handles both mapping shapes — the YAML's `{canonical: {variants: [...]}}` and
+    the flat `{canonical: [variants]}` default — and normalizes separators so
+    `first_name`, `first-name`, and `first name` all match the same variant.
+    """
+    target = _normalize_label(field_label)
+
+    for canonical_name, spec in field_mapping.items():
+        for variant in _variants_of(spec):
+            if _normalize_label(variant) == target:
                 return canonical_name
 
     return None
+
+
+def _variants_of(spec) -> List[str]:
+    """Extract the variant list from either mapping shape."""
+    if isinstance(spec, dict):
+        return spec.get("variants", [])
+    if isinstance(spec, list):
+        return spec
+    return []
+
+
+def _normalize_label(label: str) -> str:
+    """Lowercase, trim, and collapse whitespace/underscores/hyphens to one space."""
+    return re.sub(r"[\s_\-]+", " ", (label or "").strip().lower())
