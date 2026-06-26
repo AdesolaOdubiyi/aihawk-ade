@@ -39,12 +39,12 @@ INTERVIEW_PATTERNS = {
 
 # Action required patterns (score ≥ 7.0 = action_required)
 ACTION_PATTERNS = {
-    r"background check.*deadline|background check.*within": 8,
+    r"background check.*by|background check.*deadline|background check.*within": 9,
     r"submit.*by.*\d|provide.*document|upload": 10,
     r"assessment.*within|complete.*assessment|quiz": 8,
     r"verify.*email|confirm.*email|click.*link": 7,
     r"reference.*check|reference.*required": 6,
-    r"please complete|please provide|action required": 8,
+    r"please complete|please provide|action required|complete.*by": 9,
 }
 
 
