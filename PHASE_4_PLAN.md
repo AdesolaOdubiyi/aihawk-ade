@@ -61,15 +61,39 @@
 
 ---
 
-## Phase 4: Acceptance Testing — What to Do
+## Phase 3: Review Loop (CRITICAL — DO THIS FIRST)
 
-### Step 1: Complete Phase 3 Review
+### Step 1: Backend Pre-Merge Review
 ```bash
-# When automated reviewer finishes, fix any remaining findings
-# Current status: rate_limiter.py + orchestrator integration pending
+# Run backend-pre-merge-reviewer skill on:
+# - orchestrator/*.py (all modules)
+# - src/database/schema.py (new tables)
+# Focus: error handling, API contracts, data validation, efficiency
 ```
 
-### Step 2: Write Acceptance Tests
+### Step 2: Security Auditor Review
+```bash
+# Run security-auditor skill on:
+# - orchestrator/approval_parser.py (regex injection risk)
+# - orchestrator/discovery.py (credential handling)
+# - orchestrator/rate_limiter.py (state management)
+# Focus: OWASP, secrets, data flow, permissions
+```
+
+### Step 3: Fix All Findings
+```bash
+# Loop:
+# 1. Review finds issues
+# 2. Fix issues
+# 3. Re-run reviews
+# 4. Repeat until both agents return zero findings
+```
+
+---
+
+## Phase 4: Acceptance Testing — After Reviews Pass
+
+### Step 1: Write Acceptance Tests
 **Create `tests/test_acceptance_orchestrator.py`** covering:
 
 1. **End-to-end workflow:**
@@ -216,12 +240,13 @@ Latest commits:
 ## Recommended Next Session Flow
 
 1. **Start fresh session** with this handoff prompt
-2. **Verify Phase 3 review:** Check if backend reviewer findings came back
-3. **Fix any new findings** from Phase 3
-4. **Create acceptance tests** (tests/test_acceptance_orchestrator.py)
-5. **Implement orchestrator.py** main loop
-6. **Run acceptance suite:** Verify end-to-end workflow
-7. **Document Phase 4 findings** and prepare Phase 5 ship
+2. **Phase 3: Run backend pre-merge review** on all orchestrator modules
+3. **Phase 3: Run security auditor review** on critical modules
+4. **Phase 3: Fix all findings** (loop until zero findings)
+5. **Phase 4: Create acceptance tests** (tests/test_acceptance_orchestrator.py)
+6. **Phase 4: Implement orchestrator.py** main loop
+7. **Phase 4: Run acceptance suite** (verify end-to-end workflow)
+8. **Phase 5: Ship** (create final commit + PR summary)
 
 ---
 
