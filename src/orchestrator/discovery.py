@@ -38,10 +38,14 @@ def discover_greenhouse(board_token: str, filters: Dict) -> List[JobListing]:
 
             jobs = []
             for job in data.get("jobs", []):
+                # Extract company name from nested organization object
+                org = job.get("organization", {})
+                company_name = org.get("name") if isinstance(org, dict) else "Unknown"
+
                 listing = JobListing(
                     id=str(job.get("id")),
                     title=job.get("title"),
-                    company=job.get("title", "Unknown"),  # Greenhouse doesn't always include company
+                    company=company_name or "Unknown",
                     url=job.get("absolute_url", ""),
                     platform="greenhouse",
                 )

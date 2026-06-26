@@ -1,7 +1,7 @@
 """Parse user email replies to extract job approvals."""
 
 import re
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 from loguru import logger
 
 
@@ -9,7 +9,7 @@ def parse_approvals(
     email_text: str,
     total_jobs: int,
     return_all: bool = False,
-) -> List[str] | Dict:
+) -> Union[List[str], Dict]:
     """Parse user email reply to extract approved job IDs.
 
     Handles formats like:
@@ -58,13 +58,13 @@ def parse_approvals(
     approve_match = re.search(r'approve:\s*([\d,\s]+)', email_lower)
     if approve_match:
         ids_str = approve_match.group(1)
-        approved = _parse_id_list(ids_str)
+        approved = _parse_id_list(ids_str, total_jobs=total_jobs)
 
     # Extract REJECT ids
     reject_match = re.search(r'reject:\s*([\d,\s]+)', email_lower)
     if reject_match:
         ids_str = reject_match.group(1)
-        rejected = _parse_id_list(ids_str)
+        rejected = _parse_id_list(ids_str, total_jobs=total_jobs)
 
     if return_all:
         all_ids = set(str(i) for i in range(1, total_jobs + 1))
@@ -79,9 +79,25 @@ def parse_approvals(
     return approved
 
 
-def _parse_id_list(ids_str: str) -> List[str]:
-    """Parse comma-separated or space-separated IDs."""
+def _parse_id_list(ids_str: str, total_jobs: Optional[int] = None) -> List[str]:
+    """Parse comma-separated or space-separated IDs.
+
+    Args:
+        ids_str: String like "1, 3, 5"
+        total_jobs: If provided, validate IDs are within range
+
+    Returns:
+        List of valid ID strings
+    """
     # Split by comma or space, clean up
     ids = re.split(r'[,\s]+', ids_str.strip())
     ids = [id.strip() for id in ids if id.strip().isdigit()]
+
+    # Validate against total_jobs if provided
+    if total_jobs:
+        valid_range = set(str(i) for i in range(1, total_jobs + 1))
+        ids = [id for id in ids if id in valid_range]
+        if len(ids) < len(re.split(r'[,\s]+', ids_str.strip())):
+            logger.warning(f"Some IDs were out of range (max: {total_jobs})")
+
     return ids
