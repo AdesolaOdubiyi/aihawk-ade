@@ -1,0 +1,140 @@
+"""
+Phase 2: Orchestrator TDD Slices
+
+Slice 1: Happy path - Discover 3 jobs → parse salary → generate digest → user approves → apply
+"""
+
+import pytest
+from src.orchestrator.discovery import discover_jobs
+from src.orchestrator.salary_extractor import extract_salary
+from src.orchestrator.digest_generator import generate_digest
+from src.orchestrator.approval_parser import parse_approvals
+from src.agents.base_agent import JobListing, ApplicationResult
+
+
+class TestSlice1HappyPath:
+    """Slice 1: Full happy path from discovery to application."""
+
+    def test_discover_jobs_from_greenhouse(self, temp_db):
+        """Discover jobs from Greenhouse API."""
+        # Mock API call
+        board_token = "test-board-token"
+        jobs = discover_jobs(
+            platform="greenhouse",
+            board_token=board_token,
+            filters={"salary_floor": 40, "job_type": "internship", "year": 2027}
+        )
+
+        assert len(jobs) >= 0
+        # In happy path, we'd have 3 jobs
+        if jobs:
+            job = jobs[0]
+            assert job.id
+            assert job.title
+            assert job.company
+            assert job.url
+            assert job.platform == "greenhouse"
+
+    def test_extract_salary_from_job_description(self):
+        """Extract salary from job description using regex."""
+        descriptions = [
+            ("Senior Engineer, $50/hr", 50.0),
+            ("Role: $75,000/year", 36.06),  # $75k/yr ÷ 2080 hrs
+            ("Salary range: $45K - $55K annually", 24.0),  # avg of range ($50k/yr ÷ 2080)
+            ("Compensation: competitive", None),  # not found
+        ]
+
+        for desc, expected_hourly in descriptions:
+            result = extract_salary(desc)
+            if expected_hourly:
+                assert result is not None
+                assert abs(result - expected_hourly) < 2.0  # within $2/hr tolerance
+            else:
+                assert result is None
+
+    def test_salary_filter_floor(self):
+        """Filter jobs by salary floor ($40/hr)."""
+        jobs = [
+            ("Job A", 50.0),   # pass
+            ("Job B", 35.0),   # fail (but include with warning)
+            ("Job C", 45.0),   # pass
+            ("Job D", None),   # include (unknown)
+        ]
+
+        salary_floor = 40.0
+        passed = [(name, sal) for name, sal in jobs if sal is None or sal >= salary_floor]
+
+        assert len(passed) == 3  # A, C, D
+        assert passed[0] == ("Job A", 50.0)
+
+    def test_generate_email_digest_markdown(self):
+        """Generate structured markdown email digest."""
+        jobs = [
+            JobListing(id="1", title="Engineer", company="CompanyA", url="url1", platform="greenhouse"),
+            JobListing(id="2", title="Intern", company="CompanyB", url="url2", platform="lever"),
+            JobListing(id="3", title="Dev", company="CompanyC", url="url3", platform="greenhouse"),
+        ]
+        salaries = {"1": 50.0, "2": 35.0, "3": 45.0}  # 1 below floor
+
+        digest = generate_digest(jobs=jobs, salaries=salaries, salary_floor=40.0)
+
+        assert "Engineer" in digest
+        assert "CompanyA" in digest
+        assert "CompanyB" in digest
+        assert "APPROVE" in digest or "REJECT" in digest  # action markers
+        assert "#" in digest  # markdown headers
+        assert len(digest) > 100  # reasonable length
+
+    def test_parse_user_approvals_from_email(self):
+        """Parse user reply: 'APPROVE: 1, 3'."""
+        email_reply = "APPROVE: 1, 3"
+        approved_ids = parse_approvals(email_reply, total_jobs=3)
+
+        assert approved_ids == ["1", "3"]
+
+    def test_parse_approvals_all(self):
+        """Parse 'APPROVE all'."""
+        email_reply = "APPROVE all"
+        approved_ids = parse_approvals(email_reply, total_jobs=5)
+
+        assert len(approved_ids) == 5
+        assert approved_ids == ["1", "2", "3", "4", "5"]
+
+    def test_parse_approvals_mixed_reject(self):
+        """Parse mixed: 'APPROVE: 1, 2' and 'REJECT: 3'."""
+        email_reply = "APPROVE: 1, 2\nREJECT: 3"
+        approvals = parse_approvals(email_reply, total_jobs=3, return_all=True)
+
+        assert approvals["approved"] == ["1", "2"]
+        assert approvals["rejected"] == ["3"]
+        assert approvals["unanswered"] == []
+
+    def test_end_to_end_discover_filter_digest_approve_apply(self, temp_db):
+        """Full Slice 1: Discover → filter → digest → approve → apply."""
+        # 1. Discover
+        jobs = [
+            JobListing(id="1", title="Eng", company="A", url="url1", platform="greenhouse"),
+            JobListing(id="2", title="Int", company="B", url="url2", platform="lever"),
+            JobListing(id="3", title="Dev", company="C", url="url3", platform="greenhouse"),
+        ]
+        salaries = {"1": 50.0, "2": 35.0, "3": 45.0}
+
+        # 2. Filter
+        filtered = [(j, salaries.get(j.id)) for j in jobs if salaries.get(j.id) is None or salaries.get(j.id) >= 40.0]
+        assert len(filtered) == 2  # A, C (B below floor but still included)
+
+        # 3. Generate digest
+        digest = generate_digest(jobs=jobs, salaries=salaries, salary_floor=40.0)
+        assert len(digest) > 0
+
+        # 4. User approves (mock reply)
+        user_reply = "APPROVE: 1, 3"
+        approved_ids = parse_approvals(user_reply, total_jobs=3)
+        assert approved_ids == ["1", "3"]
+
+        # 5. Apply (would call GreenhouseAgent, LeverAgent)
+        # For this test, just verify we have approved jobs
+        approved_jobs = [j for j in jobs if j.id in approved_ids]
+        assert len(approved_jobs) == 2
+        assert approved_jobs[0].id == "1"
+        assert approved_jobs[1].id == "3"

@@ -87,6 +87,67 @@ def init_database():
         )
     """)
 
+    # Job batches (discovery runs)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS job_batches (
+            id TEXT PRIMARY KEY,
+            discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            discovery_sources TEXT,
+            status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'expired')),
+            batch_size INTEGER,
+            user_email TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP,
+            approved_at TIMESTAMP
+        )
+    """)
+
+    # Batch jobs (individual jobs in a batch)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS batch_jobs (
+            id TEXT PRIMARY KEY,
+            batch_id TEXT NOT NULL REFERENCES job_batches(id),
+            job_id TEXT NOT NULL REFERENCES jobs(id),
+            user_approval_status TEXT DEFAULT 'pending' CHECK(user_approval_status IN ('approved', 'rejected', 'pending')),
+            approved_at TIMESTAMP,
+            is_duplicate_of TEXT REFERENCES jobs(id),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Job discoveries (raw discovery records)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS job_discoveries (
+            id TEXT PRIMARY KEY,
+            platform TEXT NOT NULL,
+            job_id TEXT NOT NULL REFERENCES jobs(id),
+            title TEXT NOT NULL,
+            company TEXT NOT NULL,
+            salary_raw TEXT,
+            salary_hourly REAL,
+            salary_annual REAL,
+            location TEXT,
+            link TEXT,
+            discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            batch_id TEXT REFERENCES job_batches(id),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Approval log (user email replies)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS approval_log (
+            id TEXT PRIMARY KEY,
+            batch_id TEXT NOT NULL REFERENCES job_batches(id),
+            user_email TEXT NOT NULL,
+            approval_text TEXT,
+            parsed_approvals TEXT,
+            received_at TIMESTAMP NOT NULL,
+            processed_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     # Indexes
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_platform ON jobs(platform)")
