@@ -1,7 +1,8 @@
 """Detect duplicate jobs across platforms."""
 
 import hashlib
-from typing import List, Dict, Set, Tuple
+import re
+from typing import List, Dict, Tuple
 from loguru import logger
 from src.agents.base_agent import JobListing
 
@@ -51,7 +52,16 @@ class JobDeduplicator:
         return non_dups
 
     def _hash_job(self, job: JobListing) -> str:
-        """Create hash from job metadata (title, company, location if available)."""
-        # Use title + company as fingerprint (location not always available)
-        fingerprint = f"{job.title}|{job.company}".lower()
-        return hashlib.md5(fingerprint.encode()).hexdigest()
+        """Create a fingerprint from normalized title + company.
+
+        Location is omitted because it is not always available across platforms.
+        Title and company are whitespace- and case-normalized so trivial
+        formatting differences across platforms do not defeat deduplication.
+        """
+        fingerprint = f"{_normalize(job.title)}|{_normalize(job.company)}"
+        return hashlib.sha256(fingerprint.encode()).hexdigest()
+
+
+def _normalize(value: str) -> str:
+    """Lowercase and collapse whitespace; tolerate None."""
+    return re.sub(r'\s+', ' ', (value or "").strip()).lower()

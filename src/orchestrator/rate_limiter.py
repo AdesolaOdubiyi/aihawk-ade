@@ -30,18 +30,10 @@ class RateLimitHandler:
         return False  # Don't auto-retry; move to manual queue
 
     def is_paused(self) -> bool:
-        """Check if rate limit pause is active."""
-        if not self.paused_until:
-            return False
+        """Check if a rate-limit pause is currently active (no side effects)."""
+        return self.paused_until is not None and time.time() < self.paused_until
 
-        if time.time() < self.paused_until:
-            return True
-
-        # Pause expired
-        self.paused_until = None
-        return False
-
-    def retry_with_backoff(self, attempt: int) -> float:
+    def retry_with_backoff(self, attempt: int) -> Optional[float]:
         """Calculate backoff delay for retry attempt.
 
         Exponential backoff: 1s, 2s, 4s, 8s, 16s
