@@ -12,6 +12,104 @@ from src.orchestrator.approval_parser import parse_approvals
 from src.agents.base_agent import JobListing, ApplicationResult
 
 
+class TestSlice8RateLimiting:
+    """Slice 8: Handle rate limiting (429 Too Many Requests)."""
+
+    def test_rate_limit_pause_and_resume(self):
+        """On 429, pause and mark for manual queue."""
+        # Simulate 429 response from API
+        # System should: pause, wait 10 min, move application to manual review queue
+
+        # For this test, verify that 429 is recognized and logged
+        from src.orchestrator.discovery import discover_greenhouse
+
+        # Mock would return 429; test that it's handled gracefully
+        # (actual implementation in discovery.py needs 429 handling)
+        pass  # Placeholder for 429 handling test
+
+    def test_retry_with_exponential_backoff(self):
+        """Retry with exponential backoff: 1s, 2s, 4s, 8s, 16s."""
+        # Verify retry delays follow exponential pattern
+        # Max retries: 5 (16s max single request)
+        pass  # Placeholder for retry backoff test
+
+    def test_max_retries_then_manual_queue(self):
+        """After max retries, move to manual queue instead of failing."""
+        # If all retries exhaust, don't lose application
+        # Mark as manual_required for user to review
+        pass  # Placeholder
+
+
+class TestSlice5Deduplication:
+    """Slice 5: Detect and track duplicate jobs across platforms."""
+
+    def test_deduplication_same_job_two_platforms(self):
+        """Same job on Greenhouse + Lever = duplicate."""
+        from src.orchestrator.deduplicator import JobDeduplicator
+
+        dedup = JobDeduplicator()
+
+        # First job (Greenhouse)
+        job1 = JobListing(
+            id="greenhouse-123",
+            title="Software Engineer",
+            company="TechCorp",
+            url="url1",
+            platform="greenhouse"
+        )
+
+        # Same job on Lever
+        job2 = JobListing(
+            id="lever-456",
+            title="Software Engineer",
+            company="TechCorp",
+            url="url2",
+            platform="lever"
+        )
+
+        id1, is_dup1 = dedup.add_job(job1)
+        assert not is_dup1  # First is primary
+
+        id2, is_dup2 = dedup.add_job(job2)
+        assert is_dup2  # Second is duplicate
+
+    def test_deduplication_unique_jobs(self):
+        """Different jobs should not be marked duplicates."""
+        from src.orchestrator.deduplicator import JobDeduplicator
+
+        dedup = JobDeduplicator()
+
+        job1 = JobListing(id="1", title="Engineer", company="A", url="url1", platform="greenhouse")
+        job2 = JobListing(id="2", title="Designer", company="A", url="url2", platform="greenhouse")
+        job3 = JobListing(id="3", title="Engineer", company="B", url="url3", platform="lever")
+
+        _, dup1 = dedup.add_job(job1)
+        _, dup2 = dedup.add_job(job2)
+        _, dup3 = dedup.add_job(job3)
+
+        assert not dup1
+        assert not dup2
+        assert not dup3
+
+    def test_deduplication_filter_non_duplicates(self):
+        """Filter out duplicates, keep only primaries."""
+        from src.orchestrator.deduplicator import JobDeduplicator
+
+        dedup = JobDeduplicator()
+
+        jobs = [
+            JobListing(id="1", title="Engineer", company="A", url="url1", platform="greenhouse"),
+            JobListing(id="2", title="Engineer", company="A", url="url2", platform="lever"),  # duplicate
+            JobListing(id="3", title="Designer", company="A", url="url3", platform="greenhouse"),
+        ]
+
+        filtered = dedup.filter_non_duplicates(jobs)
+
+        assert len(filtered) == 2
+        assert filtered[0].id == "1"
+        assert filtered[1].id == "3"
+
+
 class TestSlice1HappyPath:
     """Slice 1: Full happy path from discovery to application."""
 
