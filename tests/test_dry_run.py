@@ -27,18 +27,29 @@ from typing import Optional
 
 import pytest
 
+from pathlib import Path
+
 from src.agents.base_agent import CandidateProfile, JobListing
+from src.agents.profile_loader import DEFAULT_PROFILE_PATH, load_candidate_profile
 
 PLAYWRIGHT_URL_ENV = "DRY_RUN_PLAYWRIGHT_URL"
 BROWSERUSE_URL_ENV = "DRY_RUN_BROWSERUSE_URL"
 
-PROFILE = CandidateProfile(
-    full_name=os.environ.get("DRY_RUN_NAME", "Test Applicant"),
-    email=os.environ.get("DRY_RUN_EMAIL", "test.applicant@example.com"),
-    phone=os.environ.get("DRY_RUN_PHONE", "+1-555-0100"),
-    resume_path=os.environ.get("DRY_RUN_RESUME", "data_folder/resume.pdf"),
-    linkedin_url=os.environ.get("DRY_RUN_LINKEDIN", "https://linkedin.com/in/test"),
-)
+
+def _load_profile() -> CandidateProfile:
+    """Prefer the filled-in YAML profile; fall back to env-var placeholders."""
+    if Path(DEFAULT_PROFILE_PATH).exists():
+        return load_candidate_profile()
+    return CandidateProfile(
+        full_name=os.environ.get("DRY_RUN_NAME", "Test Applicant"),
+        email=os.environ.get("DRY_RUN_EMAIL", "test.applicant@example.com"),
+        phone=os.environ.get("DRY_RUN_PHONE", "+1-555-0100"),
+        resume_path=os.environ.get("DRY_RUN_RESUME", "data_folder/resume.pdf"),
+        linkedin_url=os.environ.get("DRY_RUN_LINKEDIN", "https://linkedin.com/in/test"),
+    )
+
+
+PROFILE = _load_profile()
 
 
 @dataclass

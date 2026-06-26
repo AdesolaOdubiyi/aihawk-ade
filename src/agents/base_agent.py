@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 from loguru import logger
 
 
@@ -22,11 +22,24 @@ class JobListing:
 
 @dataclass
 class CandidateProfile:
+    """Everything needed to fill a job application.
+
+    Core contact fields are typed; the long tail of application questions (work
+    authorization, salary, EEO, reusable essay answers, ...) lives in `qa`, keyed
+    by canonical question name, so new questions never require a schema change.
+    `education` is a list of dicts (school, degree, field_of_study, graduation_year, gpa).
+    """
+
     full_name: str
     email: str
     phone: str
     resume_path: str
     linkedin_url: Optional[str] = None
+    github_url: Optional[str] = None
+    portfolio_url: Optional[str] = None
+    location: Optional[str] = None
+    education: List[dict] = field(default_factory=list)
+    qa: dict = field(default_factory=dict)
     extra_fields: dict = None
 
 

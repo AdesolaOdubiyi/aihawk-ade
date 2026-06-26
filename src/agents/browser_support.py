@@ -18,7 +18,7 @@ from typing import Dict, List, Optional, Protocol
 from loguru import logger
 
 from src.agents.base_agent import CandidateProfile
-from src.forms.field_mapping import find_field_variant, load_field_mapping
+from src.forms.field_mapping import find_field_variant, load_field_mapping, normalize_label
 
 # Form filling is cheap work, so the default LLM backend is a free local model
 # (Ollama). Hosted models are supported by swapping the backend; prices below let
@@ -44,10 +44,6 @@ _BLOCKER_MARKERS = {
     "bot_protection": ("cf-challenge", "challenge-platform", "/cdn-cgi/challenge", "just a moment"),
     "login_required": ("please sign in", "log in to continue", "sign in to apply", "session expired"),
 }
-
-# Canonical fields answerable directly from the candidate profile.
-_PROFILE_FIELDS = {"full_name", "first_name", "last_name", "email", "phone", "linkedin_url"}
-
 
 @dataclass
 class FormField:
@@ -186,14 +182,20 @@ class FormAnswerer:
         self.cache = cache
         self.llm = llm if llm is not None else OllamaAnswerLLM(model=model)
         self.field_mapping = load_field_mapping()
+        self._answers = self._build_answer_map()
         input_price, output_price = price_for(model)
         self.cost = CostLedger(input_price=input_price, output_price=output_price)
 
     def resolve(self, field: FormField) -> Optional[str]:
-        """Return a value for the field, or None if it cannot be answered."""
-        direct = self._from_profile(field.label)
-        if direct is not None:
-            return direct
+        """Return a value for the field, or None if it cannot be answered.
+
+        Resolution order, cheapest first: a mapped profile/qa value, a contact
+        inference, a reusable free-form answer matched by question gist, the
+        answer cache, then the LLM.
+        """
+        profile_value = self._from_profile(field.label)
+        if profile_value is not None:
+            return profile_value
 
         cached = self.cache.get(field.label)
         if cached is not None:
@@ -207,9 +209,37 @@ class FormAnswerer:
 
     def _from_profile(self, label: str) -> Optional[str]:
         canonical = find_field_variant(label, self.field_mapping)
-        if canonical not in _PROFILE_FIELDS:
-            return self._infer_profile_field(label)
-        return self._profile_value(canonical)
+        if canonical and canonical in self._answers:
+            return self._answers[canonical]
+
+        inferred = self._infer_profile_field(label)
+        if inferred is not None:
+            return inferred
+
+        # Reusable free-form answers are keyed by question gist (punctuation-free).
+        return self._answers.get(normalize_label(label))
+
+    def _build_answer_map(self) -> Dict[str, str]:
+        """Collapse the profile into a canonical-name -> value lookup."""
+        answers: Dict[str, str] = {}
+
+        def put(key: str, value: Optional[str]) -> None:
+            if value:
+                answers[key] = str(value)
+
+        put("full_name", self.profile.full_name)
+        put("first_name", self._name_part(first=True))
+        put("last_name", self._name_part(first=False))
+        put("email", self.profile.email)
+        put("phone", self.profile.phone)
+        put("linkedin_url", self.profile.linkedin_url)
+        put("github_url", getattr(self.profile, "github_url", None))
+        put("portfolio_url", getattr(self.profile, "portfolio_url", None))
+        put("location", getattr(self.profile, "location", None))
+
+        for key, value in (getattr(self.profile, "qa", {}) or {}).items():
+            put(key, value)
+        return answers
 
     def _infer_profile_field(self, label: str) -> Optional[str]:
         """Fall back to substring matching when the label isn't an exact variant."""
@@ -223,21 +253,6 @@ class FormAnswerer:
         if "phone" in lowered or "mobile" in lowered:
             return self.profile.phone
         if "linkedin" in lowered:
-            return self.profile.linkedin_url
-        return None
-
-    def _profile_value(self, canonical: str) -> Optional[str]:
-        if canonical == "full_name":
-            return self.profile.full_name
-        if canonical == "first_name":
-            return self._name_part(first=True)
-        if canonical == "last_name":
-            return self._name_part(first=False)
-        if canonical == "email":
-            return self.profile.email
-        if canonical == "phone":
-            return self.profile.phone
-        if canonical == "linkedin_url":
             return self.profile.linkedin_url
         return None
 

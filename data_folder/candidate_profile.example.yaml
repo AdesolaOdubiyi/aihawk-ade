@@ -1,0 +1,53 @@
+# Candidate profile — fill this once; the agents read it for every application.
+# Copy to candidate_profile.yaml and replace the values. Leave a field blank to
+# let it fall through to the answer cache / LLM (or to manual review if required).
+#
+# This holds your ANSWERS. field_mapping.yaml separately maps a form's field
+# LABELS to these canonical names, so "Are you legally authorized to work?" and
+# "work eligibility" both resolve to work_authorization below.
+
+contact:
+  full_name: "Jane Doe"
+  email: "jane@example.com"
+  phone: "+1-555-0100"
+  location: "Boston, MA"
+
+links:
+  linkedin: "https://linkedin.com/in/janedoe"
+  github: "https://github.com/janedoe"
+  portfolio: "https://janedoe.dev"
+
+resume_path: "data_folder/resume.pdf"
+
+work_eligibility:
+  work_authorization: "Authorized to work in the US"
+  requires_sponsorship: "No"
+
+experience:
+  years_experience: "3"
+
+# Most recent first. Used for school/degree/major/grad-year/GPA questions.
+education:
+  - school: "Northeastern University"
+    degree: "B.S. Computer Science"
+    field_of_study: "Computer Science"
+    graduation_year: "2027"
+    gpa: "3.8"
+
+preferences:
+  salary_expectation: "120000"
+  willing_to_relocate: "Yes"
+  notice_period: "2 weeks"
+
+# Optional EEO / demographic answers. Leave blank to skip — these are voluntary.
+eeo:
+  gender: ""
+  race_ethnicity: ""
+  veteran_status: ""
+  disability_status: ""
+
+# Reusable free-form answers, keyed by the gist of the question (matched loosely,
+# case/whitespace-insensitive). Anything not here falls back to the local LLM.
+common_answers:
+  "why do you want to work here": "I'm drawn to teams shipping real product with a high quality bar, and this role matches my strengths in backend systems."
+  "describe a challenge you overcame": "I led a migration off a brittle scraper to a typed API integration, cutting failures by 80%."

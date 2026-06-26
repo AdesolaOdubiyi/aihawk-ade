@@ -1,0 +1,201 @@
+# Field mapping for job application form filling
+# Maps canonical field names to platform-specific variants
+
+fields:
+  full_name:
+    variants:
+      - full_name
+      - fullName
+      - full name
+      - name
+      - applicant_name
+      - applicant name
+
+  first_name:
+    variants:
+      - first_name
+      - firstName
+      - first name
+      - given_name
+      - given name
+
+  last_name:
+    variants:
+      - last_name
+      - lastName
+      - last name
+      - family_name
+      - surname
+      - family name
+
+  email:
+    variants:
+      - email
+      - email_address
+      - emailAddress
+      - email_addr
+      - email address
+
+  phone:
+    variants:
+      - phone
+      - phone_number
+      - phoneNumber
+      - mobile
+      - mobile_phone
+      - phone number
+      - contact_number
+      - contact number
+
+  resume:
+    type: file_upload
+    variants:
+      - resume
+      - cv
+      - resume_upload
+      - resume_file
+      - curriculum_vitae
+      - curriculum vitae
+      - resume file
+      - cv file
+
+  linkedin_url:
+    variants:
+      - linkedin
+      - linkedin_url
+      - linkedinUrl
+      - linkedin_profile
+      - linkedin_profile_url
+      - linkedinProfile
+      - linkedin profile
+      - linkedin profile url
+
+  cover_letter:
+    type: text | file_upload
+    variants:
+      - cover_letter
+      - coverLetter
+      - cover_letter_text
+      - cover_letter_file
+      - cover letter
+      - cover letter text
+
+  github_url:
+    variants:
+      - github
+      - github url
+      - github profile
+
+  portfolio_url:
+    variants:
+      - portfolio
+      - portfolio url
+      - website
+      - personal website
+
+  location:
+    variants:
+      - location
+      - city
+      - current location
+      - where are you located
+      - city and state
+
+  work_authorization:
+    variants:
+      - work authorization
+      - authorized to work
+      - legally authorized to work
+      - are you legally authorized to work
+      - authorized to work in the us
+      - work eligibility
+      - eligible to work
+
+  requires_sponsorship:
+    variants:
+      - sponsorship
+      - require sponsorship
+      - visa sponsorship
+      - will you require sponsorship
+      - do you require sponsorship
+      - need sponsorship
+
+  years_experience:
+    variants:
+      - years of experience
+      - years experience
+      - total experience
+      - how many years of experience
+
+  salary_expectation:
+    variants:
+      - salary expectation
+      - expected salary
+      - desired salary
+      - compensation expectation
+      - salary requirements
+
+  willing_to_relocate:
+    variants:
+      - willing to relocate
+      - relocate
+      - open to relocation
+
+  notice_period:
+    variants:
+      - notice period
+      - availability
+      - start date
+      - when can you start
+
+  school:
+    variants:
+      - school
+      - university
+      - college
+      - institution
+
+  degree:
+    variants:
+      - degree
+      - highest degree
+      - level of education
+
+  field_of_study:
+    variants:
+      - field of study
+      - major
+      - course of study
+
+  graduation_year:
+    variants:
+      - graduation year
+      - grad year
+      - year of graduation
+
+  gpa:
+    variants:
+      - gpa
+      - grade point average
+
+  gender:
+    variants:
+      - gender
+
+  race_ethnicity:
+    variants:
+      - race
+      - ethnicity
+      - race/ethnicity
+      - race or ethnicity
+
+  veteran_status:
+    variants:
+      - veteran status
+      - are you a veteran
+      - protected veteran
+
+  disability_status:
+    variants:
+      - disability status
+      - disability

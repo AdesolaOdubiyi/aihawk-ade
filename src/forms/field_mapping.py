@@ -65,14 +65,39 @@ def find_field_variant(field_label: str, field_mapping: Dict) -> Optional[str]:
     the flat `{canonical: [variants]}` default — and normalizes separators so
     `first_name`, `first-name`, and `first name` all match the same variant.
     """
-    target = _normalize_label(field_label)
+    target = normalize_label(field_label)
 
+    # 1. Exact match wins — handles short labels ("Email", "Phone") cleanly.
     for canonical_name, spec in field_mapping.items():
         for variant in _variants_of(spec):
-            if _normalize_label(variant) == target:
+            if normalize_label(variant) == target:
                 return canonical_name
 
-    return None
+    # 2. Otherwise, the longest multi-word variant that appears as a whole phrase
+    #    inside the label. Real labels carry extra words ("Are you authorized to
+    #    work in the US?"); multi-word-only avoids "name" matching "company name".
+    best_canonical = None
+    best_length = 0
+    for canonical_name, spec in field_mapping.items():
+        for variant in _variants_of(spec):
+            normalized = normalize_label(variant)
+            if " " not in normalized or len(normalized) <= best_length:
+                continue
+            if re.search(rf"\b{re.escape(normalized)}\b", target):
+                best_canonical = canonical_name
+                best_length = len(normalized)
+
+    return best_canonical
+
+
+def normalize_label(label: str) -> str:
+    """Lowercase and collapse any run of non-alphanumerics to a single space.
+
+    Makes `first_name`, `first-name`, "First Name", and "Race/Ethnicity?" all
+    normalize to a comparable form, so form labels match mapping variants
+    regardless of punctuation or separators.
+    """
+    return re.sub(r"[^a-z0-9]+", " ", (label or "").lower()).strip()
 
 
 def _variants_of(spec) -> List[str]:
@@ -82,8 +107,3 @@ def _variants_of(spec) -> List[str]:
     if isinstance(spec, list):
         return spec
     return []
-
-
-def _normalize_label(label: str) -> str:
-    """Lowercase, trim, and collapse whitespace/underscores/hyphens to one space."""
-    return re.sub(r"[\s_\-]+", " ", (label or "").strip().lower())
