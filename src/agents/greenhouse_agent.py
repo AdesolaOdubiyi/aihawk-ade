@@ -1,6 +1,7 @@
 import httpx
 import time
 import uuid
+import re
 from typing import Optional
 from loguru import logger
 from src.agents.api_agent import APIAgent, FormDefinition
@@ -10,6 +11,7 @@ from src.agents.base_agent import (
     SubmissionResult,
     ApplicationResult,
 )
+from src.forms.field_mapping import load_field_mapping
 
 
 class GreenhouseAgent(APIAgent):
@@ -23,14 +25,8 @@ class GreenhouseAgent(APIAgent):
         self.field_mapping = self._load_field_mapping()
 
     def _load_field_mapping(self) -> dict:
-        """Load field name variants from YAML."""
-        # TODO: Load from data_folder/field_mapping.yaml
-        return {
-            "first_name": ["first_name", "firstName", "first name"],
-            "last_name": ["last_name", "lastName", "last name"],
-            "email": ["email", "email_address", "emailAddress"],
-            "phone": ["phone", "phone_number", "phoneNumber", "mobile"],
-        }
+        """Load field name variants from YAML config."""
+        return load_field_mapping()
 
     def fetch_form_definition(self, job_id: str) -> FormDefinition:
         """Fetch job form schema from Greenhouse API."""
@@ -175,17 +171,40 @@ class GreenhouseAgent(APIAgent):
         """Match field label to profile value."""
         field_label_lower = field_label.lower()
 
-        if any(x in field_label_lower for x in ["first", "given"]):
-            return profile.full_name.split()[0]
-        elif any(x in field_label_lower for x in ["last", "family", "surname"]):
-            return profile.full_name.split()[-1]
-        elif "email" in field_label_lower:
-            return profile.email
+        try:
+            name_parts = profile.full_name.strip().split()
+            if not name_parts:
+                return None
+
+            if any(x in field_label_lower for x in ["first", "given"]):
+                return name_parts[0]
+            elif any(x in field_label_lower for x in ["last", "family", "surname"]):
+                return name_parts[-1]
+        except (AttributeError, IndexError):
+            logger.warning(f"Failed to parse name: {profile.full_name}")
+            return None
+
+        if "email" in field_label_lower:
+            return profile.email if self._validate_email(profile.email) else None
         elif "phone" in field_label_lower:
-            return profile.phone
+            return profile.phone if self._validate_phone(profile.phone) else None
         elif "linkedin" in field_label_lower:
             return profile.linkedin_url
         return None
+
+    def _validate_email(self, email: str) -> bool:
+        """Validate email format using regex."""
+        if not email:
+            return False
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.match(pattern, email))
+
+    def _validate_phone(self, phone: str) -> bool:
+        """Validate phone has minimum digits."""
+        if not phone:
+            return False
+        digits = re.sub(r'\D', '', phone)
+        return len(digits) >= 10
 
     def _validate_field_value(self, value: str, field_type: str) -> bool:
         """Validate field value based on type."""
@@ -193,11 +212,11 @@ class GreenhouseAgent(APIAgent):
             return False
 
         if field_type == "email":
-            return "@" in value and "." in value.split("@")[1]
+            return self._validate_email(value)
         elif field_type in ["phone", "phone_number"]:
-            return len(value.replace("-", "").replace(" ", "").replace("+", "")) >= 10
+            return self._validate_phone(value)
         elif field_type == "short_text":
-            return len(value) > 0
+            return len(str(value).strip()) > 0
         else:
             return True
 
